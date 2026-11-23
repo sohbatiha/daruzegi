@@ -1,0 +1,58 @@
+services:
+  singbox:
+    build: ./singbox-chain
+    container_name: singbox
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "127.0.0.1:1080:1080"
+    environment:
+      - SUB_URL=${SUB_URL}
+      - SSH_HOST=${SSH_HOST}
+      - SSH_PORT=${SSH_PORT:-22}
+      - SSH_USER=${SSH_USER}
+      - SSH_KEY_PATH=/etc/sing-box/ssh-key
+    volumes:
+      - ${SSH_KEY_FILE:-~/.ssh/id_rsa}:/etc/sing-box/ssh-key:ro
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /sys/class/net/tun0 && nc -z 127.0.0.1 1080"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 3s
+
+  claude-code:
+    build: .
+    container_name: claude-workspace
+    network_mode: "service:singbox"
+    depends_on:
+      singbox:
+        condition: service_healthy
+    environment:
+      - TZ=Europe/Helsinki
+      - LANG=en_US.UTF-8
+      - TERM=xterm-256color
+    volumes:
+      - ./projects/project-a:/workspace/project-a
+      - ./projects/project-b:/workspace/project-b
+      - claude-config:/root/.claude
+    working_dir: /workspace
+    command: >
+      sh -c "
+        git config --global user.name 'your-name' &&
+        git config --global user.email 'you@example.com' &&
+        git config --global log.date local &&
+        tail -f /dev/null
+      "
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  claude-config:
