@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/daruzegi.jpg" alt="دَریوزِگی (Daruzegi)" width="320" />
+  <img src="assets/daruzegi.jpg" alt="دَریوزِگی (Daruzegi)" width="640" />
 </p>
 
 <div dir="rtl">
