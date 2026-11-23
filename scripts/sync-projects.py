@@ -105,7 +105,7 @@ def main() -> int:
         "# Auto-generated from PROJECTS in .env — do not edit manually.",
         "# Regenerated automatically on `make up` / `make build` (or run `make sync-projects`).",
         "services:",
-        "  claude-code:",
+        "  t3code:",
         "    volumes:",
     ]
     for host_path, container_path in mounts:

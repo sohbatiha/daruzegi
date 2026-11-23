@@ -9,6 +9,7 @@ services:
       - /dev/net/tun:/dev/net/tun
     ports:
       - "127.0.0.1:${SOCKS_PORT:-1080}:1080"
+      - "127.0.0.1:${T3_PORT:-3773}:3773"
     environment:
       - PROXY_MODE=${PROXY_MODE:-sub}
       - SUB_URL=${SUB_URL:-}
@@ -30,32 +31,40 @@ services:
       retries: 15
       start_period: 3s
 
-  claude-code:
+  t3code:
     build: .
-    container_name: claude-workspace
+    image: t3code:latest
+    container_name: t3code
+    restart: unless-stopped
+    init: true
     network_mode: "service:singbox"
     depends_on:
       singbox:
         condition: service_healthy
+    cpus: ${T3_CPUS:-0}
+    volumes:
+      # Single unified persistent home directory for all agents, skills, plugins,
+      # configs, caches, local binaries, and T3 Code state (survives rebuilds/resets)
+      - ${DATA_DIR:-./data}:/home/node
     environment:
+      - HOME=/home/node
+      - NODE_ENV=production
+      - CLAUDE_CONFIG_DIR=/home/node/.claude
+      - CODEX_HOME=/home/node/.codex
+      - XDG_CONFIG_HOME=/home/node/.config
+      - XDG_DATA_HOME=/home/node/.local/share
+      - XDG_CACHE_HOME=/home/node/.cache
+      - NPM_CONFIG_PREFIX=/home/node/.npm-global
+      - DISABLE_AUTOUPDATER=1
       - TZ=${TZ:-Europe/Helsinki}
       - LANG=${WORKSPACE_LANG:-en_US.UTF-8}
       - TERM=${WORKSPACE_TERM:-xterm-256color}
       - GIT_USER_NAME=${GIT_USER_NAME:-}
       - GIT_USER_EMAIL=${GIT_USER_EMAIL:-}
-    volumes:
-      - claude-config:/root/.claude
+      - T3_PORT=${T3_PORT:-3773}
+      - T3_PUBLIC_URL=${T3_PUBLIC_URL:-}
+      - T3_PAIRING_TTL=${T3_PAIRING_TTL:-1h}
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     working_dir: /workspace
-    command: >
-      sh -c '
-        [ -n "$$GIT_USER_NAME" ] && git config --global user.name "$$GIT_USER_NAME";
-        [ -n "$$GIT_USER_EMAIL" ] && git config --global user.email "$$GIT_USER_EMAIL";
-        git config --global log.date local &&
-        tail -f /dev/null
-      '
-    stdin_open: true
-    tty: true
-    restart: unless-stopped
-
-volumes:
-  claude-config:

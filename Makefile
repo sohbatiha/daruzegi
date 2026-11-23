@@ -3,33 +3,56 @@ SHELL := /bin/bash
 
 -include .env
 
+COMPOSE         := docker compose
 FIREFOX_PROFILE := $(HOME)/ff-claude-profile
 TIMEZONE        := $(or $(TZ),Europe/Helsinki)
 SOCKS_PORT      := $(or $(SOCKS_PORT),1080)
+T3_PORT         := $(or $(T3_PORT),3773)
 
-.PHONY: help sync-projects up build down restart firefox claude shell check logs
+.PHONY: help setup sync-projects up build down restart ps firefox pair claude claude-login codex-login shell check logs logs-singbox logs-t3 fix-perms
 
 help: ## Show available commands
-	@echo "Claude Workspace (sing-box → VLESS/VMess → SSH Exit)"
+	@echo "T3 Code Workspace (sing-box → VLESS/VMess → SSH Exit)"
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+setup: ## Create .env from .env.example
+	@if [ -f .env ]; then echo ".env already exists"; else cp .env.example .env && chmod 600 .env && echo "created .env — edit it"; fi
+
 sync-projects: ## Generate docker-compose.override.yaml from PROJECTS in .env
 	@python3 scripts/sync-projects.py
 
 up: sync-projects ## Start containers in background
-	docker compose up -d
+	$(COMPOSE) up -d --remove-orphans
 
 build: sync-projects ## Rebuild images and start containers
-	docker compose up -d --build
+	$(COMPOSE) up -d --build --remove-orphans
 
 down: ## Stop and remove containers
-	docker compose down
+	$(COMPOSE) down
 
 restart: ## Restart containers
-	docker compose restart
+	$(COMPOSE) restart
+
+ps: ## Show container status
+	$(COMPOSE) ps
+
+pair: ## Print a T3 Code login link (make pair TTL=30d)
+	$(COMPOSE) exec t3code t3-pair $(TTL)
+
+claude: ## Run Claude Code inside t3code container
+	$(COMPOSE) exec -it t3code claude
+
+claude-login: ## Log in to Claude Code (run /login inside)
+	$(COMPOSE) exec -it t3code claude
+
+codex-login: ## Log in to Codex with ChatGPT
+	$(COMPOSE) exec -it t3code codex login --device-auth
+
+shell: ## Open interactive bash shell inside t3code
+	$(COMPOSE) exec -it t3code bash
 
 firefox: ## Launch hardened Firefox using SOCKS5 proxy (127.0.0.1:1080)
 	@mkdir -p $(FIREFOX_PROFILE)
@@ -49,24 +72,30 @@ user_pref("intl.accept_languages", "en-US, en");\n' > $(FIREFOX_PROFILE)/user.js
 	@TZ="$(TIMEZONE)" /Applications/Firefox.app/Contents/MacOS/firefox --profile $(FIREFOX_PROFILE) --no-remote --new-instance >/dev/null 2>&1 &
 	@echo "Hardened Firefox launched on 127.0.0.1:$(SOCKS_PORT) (TZ=$(TIMEZONE))"
 
-claude: ## Run Claude Code inside claude-workspace container
-	docker exec -it claude-workspace claude
-
-shell: ## Open interactive bash shell inside claude-workspace
-	docker exec -it claude-workspace bash
-
-check: ## Verify host SOCKS5 IP, container IP, TUN routing, and DNS
+check: ## Verify SOCKS5 IP, container IP, TUN routing, DNS, and T3 port
 	@echo "--- Host SOCKS5 Proxy IP (127.0.0.1:$(SOCKS_PORT)) ---"
 	@curl -s --max-time 10 --socks5-hostname 127.0.0.1:$(SOCKS_PORT) https://api.ipify.org || echo "Failed"
 	@echo ""
-	@echo "--- Container IP (claude-workspace) ---"
-	@docker exec claude-workspace curl -s --max-time 10 https://api.ipify.org || echo "Failed"
+	@echo "--- Container IP (t3code) ---"
+	@docker exec t3code curl -s --max-time 10 https://api.ipify.org || echo "Failed"
 	@echo ""
 	@echo "--- Transparent TUN Test (--noproxy '*', Expecting Same Exit IP) ---"
-	@docker exec claude-workspace curl -s --noproxy "*" --max-time 10 https://api.ipify.org || echo "Failed"
+	@docker exec t3code curl -s --noproxy "*" --max-time 10 https://api.ipify.org || echo "Failed"
 	@echo ""
 	@echo "--- Container DNS Config ---"
-	@docker exec claude-workspace cat /etc/resolv.conf
+	@docker exec t3code cat /etc/resolv.conf
+	@echo ""
+	@echo "--- T3 Code Local Endpoint (http://127.0.0.1:$(T3_PORT)) ---"
+	@curl -sS -o /dev/null -w "HTTP %{http_code}\n" --max-time 5 http://127.0.0.1:$(T3_PORT) || echo "Failed"
 
-logs: ## Follow singbox container logs
-	docker logs -f singbox
+logs: ## Follow logs for all containers
+	$(COMPOSE) logs -f --tail=200
+
+logs-singbox: ## Follow singbox container logs
+	docker logs -f --tail=200 singbox
+
+logs-t3: ## Follow t3code container logs
+	docker logs -f --tail=200 t3code
+
+fix-perms: ## Give node (container user) ownership of all projects
+	docker exec -u 0 t3code chown -R node:node /workspace

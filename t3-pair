@@ -1,0 +1,6 @@
+#!/bin/sh
+# Issue a T3 Code login (pairing) link.  Usage: t3-pair [ttl]   e.g. t3-pair 30d
+exec t3 auth pairing create \
+  --label "${T3_PAIRING_LABEL:-docker}" \
+  --ttl "${1:-${T3_PAIRING_TTL:-1h}}" \
+  --base-url "${T3_PUBLIC_URL:-http://localhost:${T3_PORT:-3773}}"
