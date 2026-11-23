@@ -1,6 +1,17 @@
-🌐 **Language:** **English** | [فارسی](README.fa.md)
+<p align="center">
+  <img src="assets/daruzegi.jpg" alt="Daruzegi (دَریوزِگی)" width="320" />
+</p>
 
-# T3 Code Workspace (`sing-box` Proxy Chain)
+<h1 align="center">Daruzegi (دَریوزِگی)</h1>
+
+<p align="center">
+  <strong>T3 Code Workspace (<code>sing-box</code> Proxy Chain)</strong><br />
+  <em>Pronunciation: <strong>/dæɾ.juː.zeˈɡiː/</strong> · <code>dar-yoo-ze-GEE</code> (Persian: <strong>دَریوزِگی</strong> — "begging / panhandling")</em>
+</p>
+
+<p align="center">
+  🌐 <strong>Language:</strong> <strong>English</strong> | <a href="README.fa.md">فارسی</a>
+</p>
 
 An isolated Docker workspace for running **T3 Code** (with **Claude Code** and **OpenAI Codex**) and a hardened **Firefox** browser where all outbound network traffic and DNS queries are forced through a chained tunnel:
 
@@ -37,6 +48,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 ├── README.fa.md            # Persian documentation
 ├── .env.example            # Required environment variables template
 ├── .gitignore              # Ignores .env, data/, and generated docker-compose.override.yaml
+├── assets/
+│   └── daruzegi.jpg        # Project artwork
 ├── scripts/
 │   └── sync-projects.py    # Generates docker-compose.override.yaml from PROJECTS in .env
 └── singbox-chain/

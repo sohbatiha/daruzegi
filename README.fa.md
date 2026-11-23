@@ -1,8 +1,19 @@
+<p align="center">
+  <img src="assets/daruzegi.jpg" alt="دَریوزِگی (Daruzegi)" width="320" />
+</p>
+
 <div dir="rtl">
 
-🌐 **زبان:** [English](README.md) | **فارسی**
+<h1 align="center">دَریوزِگی (Daruzegi)</h1>
 
-# محیط کار ایزوله T3 Code (`sing-box` Proxy Chain)
+<p align="center">
+  <strong>محیط کار ایزوله T3 Code (<code>sing-box</code> Proxy Chain)</strong><br />
+  تلفظ: <strong>دَر-یو-زِ-گی</strong> · فونتیک: <span dir="ltr"><strong>/dæɾ.juː.zeˈɡiː/</strong> · <code>dar-yoo-ze-GEE</code></span>
+</p>
+
+<p align="center">
+  🌐 <strong>زبان:</strong> <a href="README.md">English</a> | <strong>فارسی</strong>
+</p>
 
 یک محیط Docker ایزوله برای اجرای **T3 Code** (همراه با **Claude Code** و **OpenAI Codex**) و مرورگر امن‌شده‌ی **Firefox** که در آن تمام ترافیک شبکه خروجی و درخواست‌های DNS به‌صورت اجباری از طریق یک تونل زنجیره‌ای عبور می‌کنند:
 
@@ -46,6 +57,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 ├── README.fa.md            # مستندات فارسی
 ├── .env.example            # الگوی متغیرهای محیطی
 ├── .gitignore              # نادیده گرفتن .env، پوشه data و docker-compose.override.yaml
+├── assets/
+│   └── daruzegi.jpg        # تصویر پروژه
 ├── scripts/
 │   └── sync-projects.py    # تولید docker-compose.override.yaml از PROJECTS در .env
 └── singbox-chain/
