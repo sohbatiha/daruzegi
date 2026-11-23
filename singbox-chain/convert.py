@@ -6,9 +6,9 @@ Handles:
 - Standard Xray/V2Ray JSON configs
 - Native sing-box JSON configs
 - Single or multi-line share URIs (plain text or base64-encoded):
-  vless://, vmess://, trojan://, ss://
+  vless://, vmess://, trojan://, ss://, socks://, socks5://, socks4://, socks4a://
 
-Supports: VLESS, VMess, Trojan, Shadowsocks
+Supports: VLESS, VMess, Trojan, Shadowsocks, SOCKS
 Transports: TCP (raw & HTTP header), WebSocket, gRPC, HTTP/2, HTTPUpgrade/XHTTP/SplitHTTP
 Security: TLS, Reality, None
 """
@@ -22,7 +22,16 @@ import sys
 from urllib.parse import parse_qs, unquote, urlsplit
 
 
-URI_SCHEMES = ("vless://", "vmess://", "trojan://", "ss://")
+URI_SCHEMES = (
+    "vless://",
+    "vmess://",
+    "trojan://",
+    "ss://",
+    "socks://",
+    "socks5://",
+    "socks4://",
+    "socks4a://",
+)
 
 
 def decode_base64(data: str) -> str:
@@ -267,11 +276,48 @@ def convert_shadowsocks(outbound: dict, tag: str) -> dict:
     }
 
 
+def _resolve_proxy_host(host: str) -> str:
+    """Map container loopback hosts to the Docker host gateway."""
+    if host.lower() in ("127.0.0.1", "localhost", "::1"):
+        print(
+            f"🔁 Rewriting loopback proxy host {host} → host.docker.internal",
+            file=sys.stderr,
+        )
+        return "host.docker.internal"
+    return host
+
+
+def convert_socks(outbound: dict, tag: str) -> dict:
+    settings = outbound.get("settings", {})
+    if "servers" in settings:
+        server = settings["servers"][0]
+    else:
+        server = settings
+
+    sb: dict = {
+        "type": "socks",
+        "tag": tag,
+        "server": _resolve_proxy_host(server.get("address", "")),
+        "server_port": int(server.get("port", 1080)),
+        "version": str(server.get("version", "5")),
+    }
+    users = server.get("users") or []
+    user = users[0] if users else {}
+    username = user.get("user") or server.get("user") or server.get("username") or ""
+    password = user.get("pass") or server.get("pass") or server.get("password") or ""
+    if username:
+        sb["username"] = username
+    if password:
+        sb["password"] = password
+    return sb
+
+
 CONVERTERS = {
     "vless": convert_vless,
     "vmess": convert_vmess,
     "trojan": convert_trojan,
     "shadowsocks": convert_shadowsocks,
+    "socks": convert_socks,
 }
 
 SKIP_PROTOCOLS = {"freedom", "blackhole", "dns", "loopback"}
@@ -566,11 +612,89 @@ def parse_ss_uri(uri: str, tag: str) -> dict:
     }
 
 
+def parse_socks_uri(uri: str, tag: str) -> dict:
+    scheme, rest = uri.split("://", 1)
+    scheme_lower = scheme.lower()
+    if scheme_lower == "socks4a":
+        version = "4a"
+    elif scheme_lower == "socks4":
+        version = "4"
+    else:
+        version = "5"
+
+    body = rest.split("#", 1)[0].split("?", 1)[0].strip()
+    if not body:
+        raise ValueError("Empty SOCKS URI")
+
+    username = ""
+    password = ""
+    hostport = ""
+
+    if "@" in body:
+        userinfo, hostport = body.rsplit("@", 1)
+        userinfo = unquote(userinfo)
+        if ":" in userinfo:
+            username, password = userinfo.split(":", 1)
+        elif userinfo:
+            try:
+                decoded = decode_base64(userinfo)
+                if ":" in decoded:
+                    username, password = decoded.split(":", 1)
+                else:
+                    username = userinfo
+            except Exception:
+                username = userinfo
+    else:
+        # Either plaintext host:port or base64-encoded [user:pass@]host:port
+        parsed_plain = None
+        if ":" in body:
+            try:
+                candidate = urlsplit(f"//{body}")
+                if candidate.hostname and candidate.port:
+                    parsed_plain = candidate
+            except ValueError:
+                parsed_plain = None
+
+        if parsed_plain is not None:
+            hostport = body
+        else:
+            decoded = decode_base64(body).strip()
+            if "@" in decoded:
+                creds, hostport = decoded.rsplit("@", 1)
+                if ":" in creds:
+                    username, password = creds.split(":", 1)
+                else:
+                    username = creds
+            else:
+                hostport = decoded
+
+    parsed_hp = urlsplit(f"//{hostport}")
+    if not parsed_hp.hostname or not parsed_hp.port:
+        raise ValueError(f"Invalid host:port in SOCKS URI: {hostport!r}")
+
+    sb: dict = {
+        "type": "socks",
+        "tag": tag,
+        "server": _resolve_proxy_host(parsed_hp.hostname),
+        "server_port": parsed_hp.port,
+        "version": version,
+    }
+    if username:
+        sb["username"] = username
+    if password:
+        sb["password"] = password
+    return sb
+
+
 URI_PARSERS = {
     "vless://": parse_vless_uri,
     "vmess://": parse_vmess_uri,
     "trojan://": parse_trojan_uri,
     "ss://": parse_ss_uri,
+    "socks://": parse_socks_uri,
+    "socks5://": parse_socks_uri,
+    "socks4://": parse_socks_uri,
+    "socks4a://": parse_socks_uri,
 }
 
 
@@ -682,7 +806,7 @@ def main() -> None:
         # 2. Try share URI(s) (plain or base64-encoded)
         uris = extract_uris(raw_text)
         if not uris:
-            print("❌ Unsupported input format (not JSON or valid vless/vmess/trojan/ss URI)", file=sys.stderr)
+            print("❌ Unsupported input format (not JSON or valid vless/vmess/trojan/ss/socks URI)", file=sys.stderr)
             sys.exit(1)
         print(f"🔄 Converting {len(uris)} share URI(s) → sing-box...", file=sys.stderr)
         outbounds = convert_uris(uris)
