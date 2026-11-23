@@ -1,3 +1,5 @@
+🌐 **Language:** **English** | [فارسی](README.fa.md)
+
 # Claude Workspace (`sing-box` Proxy Chain)
 
 An isolated Docker workspace for running **Claude Code** and a hardened **Firefox** browser where all network traffic and DNS queries are forced through a chained tunnel:
@@ -23,6 +25,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 ├── Dockerfile              # Node 20 + git + curl + @anthropic-ai/claude-code
 ├── docker-compose.yaml     # Unified stack: singbox gateway + claude-workspace
 ├── Makefile                # Helper commands (run `make` for help)
+├── README.md               # English documentation
+├── README.fa.md            # Persian documentation
 ├── .env.example            # Required environment variables template
 ├── .gitignore              # Ignores .env and generated docker-compose.override.yaml
 ├── scripts/
