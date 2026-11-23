@@ -12,7 +12,10 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 
 ## Features
 
-- **Chained Proxy Architecture**: Fetches an Xray/V2Ray subscription (including Sanaei panel JSON arrays), converts outbounds to `sing-box` 1.14+ format, selects the fastest node via `urltest` (`auto`), and tunnels an SSH exit connection through it.
+- **Flexible Proxy Modes (`sub`, `uri`, `direct`)**:
+  - `sub` *(default)*: Fetches an Xray/V2Ray subscription (Sanaei JSON arrays, standard JSON, sing-box JSON, or base64/plain URI lists), converts outbounds to `sing-box` 1.14+ format, selects the fastest node via `urltest` (`auto`), and tunnels an SSH exit connection through it.
+  - `uri`: Connects via a single share link (`vless://`, `vmess://`, `trojan://`, or `ss://`) defined in `PROXY_URI`, then tunnels through SSH.
+  - `direct`: Bypasses the upstream proxy/subscription entirely and connects directly to your SSH exit node.
 - **Transparent TUN Routing & Kill Switch**: The `claude-workspace` container shares `singbox`'s network namespace (`network_mode: "service:singbox"`) and waits until `singbox` passes its healthcheck (`tun0` up + port `1080` listening). All container traffic is routed through `tun0` with `strict_route: true` — even tools ignoring proxy environment variables cannot bypass the tunnel.
 - **No DNS Leaks**: Container DNS is pointed to `1.1.1.1` so queries enter `tun0`, get intercepted via `hijack-dns`, and resolve over DoH (`https://1.1.1.1/dns-query`) through `ssh-exit`. Proxy server hostnames resolve separately via Docker's local resolver (`default_domain_resolver`) to avoid bootstrap loops.
 - **Host SOCKS5/HTTP Proxy + Hardened Firefox**: Exposes a `mixed` inbound on `127.0.0.1:1080` for macOS host apps and includes `make firefox` to launch an isolated Firefox profile with remote SOCKS5 DNS, WebRTC disabled, geolocation disabled, `resistFingerprinting`, and matching timezone (`Europe/Helsinki`).
@@ -41,8 +44,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 ## Prerequisites
 
 - Docker & Docker Compose
-- An Xray/V2Ray JSON subscription URL (or sing-box JSON config)
-- An SSH exit server with key-based authentication (`~/.ssh/id_rsa` or custom key path)
+- *(Optional, depending on `PROXY_MODE`)* An Xray/V2Ray/sing-box subscription URL (`sub`) or a single `vless://` / `vmess://` / `trojan://` / `ss://` link (`uri`)
+- An SSH exit server with key-based authentication (`~/.ssh/id_rsa` or custom key path) — enabled by default
 - *(Optional)* Firefox installed at `/Applications/Firefox.app` (macOS) for `make firefox`
 
 ## Setup
@@ -52,12 +55,21 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
    cp .env.example .env
    ```
 
-2. Edit `.env` with your subscription URL, SSH exit server, workspace settings, and Git identity:
+2. Edit `.env` with your proxy mode, SSH exit server, workspace settings, Git identity, and project paths:
    ```env
-   # Subscription (Xray/V2Ray JSON, e.g. from Sanaei panel)
+   # Upstream Proxy Mode: sub | uri | direct
+   PROXY_MODE=sub
+
+   # Subscription URL (when PROXY_MODE=sub)
    SUB_URL=https://sub.example.com/json/YOUR_TOKEN
 
+   # Single proxy URI (when PROXY_MODE=uri) — supports vless://, vmess://, trojan://, ss://
+   # PROXY_URI=vless://uuid@example.com:443?security=reality&sni=example.com&pbk=...&sid=...&fp=chrome#node
+
    # SSH Tunnel (final exit node)
+   # WARNING: Always enabled by default (SSH_ENABLED=true). Setting SSH_ENABLED=false
+   # disables the SSH exit hop and WILL LEAK your real IP if combined with PROXY_MODE=direct.
+   # SSH_ENABLED=true
    SSH_HOST=1.2.3.4
    SSH_PORT=22
    SSH_USER=root

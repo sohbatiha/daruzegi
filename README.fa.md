@@ -18,7 +18,11 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 
 ## ویژگی‌ها
 
-- **معماری پروکسی زنجیره‌ای (Chained Proxy):** لینک سابسکریپشن Xray/V2Ray (از جمله خروجی JSON پنل سنایی) را دریافت کرده، به فرمت `sing-box` نسخه 1.14 به بالا تبدیل می‌کند، سریع‌ترین سرور را با `urltest` (`auto`) انتخاب کرده و ترافیک خروجی را از طریق تونل SSH به سرور نهایی هدایت می‌کند.
+- **حالت‌های انعطاف‌پذیر پروکسی (`sub`، `uri` و `direct`):**
+  - `sub` *(پیش‌فرض)*: لینک سابسکریپشن Xray/V2Ray (خروجی JSON پنل سنایی، JSON استاندارد، sing-box JSON یا لیست URI به‌صورت متن ساده/Base64) را دریافت کرده، به فرمت `sing-box` نسخه 1.14 به بالا تبدیل می‌کند، سریع‌ترین سرور را با `urltest` (`auto`) انتخاب کرده و ترافیک خروجی را از طریق تونل SSH به سرور نهایی هدایت می‌کند.
+  - `uri`: اتصال تکی از طریق یک لینک کانفیگ (`vless://`، `vmess://`، `trojan://` یا `ss://`) در متغیر `PROXY_URI` و عبور آن از تونل SSH.
+  - `direct`: حذف کامل لایه پروکسی/سابسکریپشن و عبور مستقیم ترافیک فقط از طریق سرور SSH خروجی.
+- **کنترل پروکسی SSH (`SSH_ENABLED`):** به‌صورت پیش‌فرض همیشه فعال است (`SSH_ENABLED=true`). غیرفعال کردن آن (`SSH_ENABLED=false`) به معنی خروج مستقیم بدون تونل SSH است و **به‌ویژه در حالت `PROXY_MODE=direct` باعث لو رفتن IP واقعی شما می‌شود** (در لاگ اجرا نیز هشدار نمایش داده می‌شود).
 - **مسیریابی شفاف TUN و Kill Switch:** کانتینر `claude-workspace` فضای شبکه `singbox` را به اشتراک می‌گذارد (`network_mode: "service:singbox"`) و تا آماده شدن کامل `singbox` (بالا آمدن `tun0` و باز شدن پورت `1080`) صبر می‌کند. تمام ترافیک کانتینر با `strict_route: true` از `tun0` عبور می‌کند؛ بنابراین حتی ابزارهایی که متغیرهای پروکسی را نادیده می‌گیرند نیز نمی‌توانند تونل را دور بزنند.
 - **بدون نشت DNS (No DNS Leaks):** تنظیم DNS کانتینر روی `1.1.1.1` قرار می‌گیرد تا تمام درخواست‌ها وارد `tun0` شده، توسط `hijack-dns` رهگیری شوند و از طریق DoH (`https://1.1.1.1/dns-query`) روی `ssh-exit` حل شوند. نام دامنه‌ی خود سرورهای پروکسی به‌صورت جداگانه با resolver داخلی Docker (`default_domain_resolver`) حل می‌شود تا حلقه (bootstrap loop) ایجاد نشود.
 - **پروکسی SOCKS5/HTTP روی سیستم میزبان + فایرفاکس امن‌شده:** یک ورودی `mixed` روی `127.0.0.1:1080` برای برنامه‌های سیستم میزبان (macOS) باز می‌کند و دستور `make firefox` یک پروفایل ایزوله از Firefox با DNS از راه دور روی SOCKS5، غیرفعال بودن WebRTC و مکان‌یابی، فعال بودن `resistFingerprinting` و تایم‌زون هماهنگ با `.env` اجرا می‌کند.
@@ -52,8 +56,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 ## پیش‌نیازها
 
 - Docker و Docker Compose
-- لینک سابسکریپشن JSON از Xray/V2Ray (یا کانفیگ JSON از sing-box)
-- یک سرور SSH خروجی با احراز هویت کلید خصوصی (`~/.ssh/id_rsa` یا مسیر دلخواه)
+- *(اختیاری بسته به `PROXY_MODE`)* لینک سابسکریپشن Xray/V2Ray/sing-box (`sub`) یا لینک تکی `vless://` / `vmess://` / `trojan://` / `ss://` (`uri`)
+- یک سرور SSH خروجی با احراز هویت کلید خصوصی (`~/.ssh/id_rsa` یا مسیر دلخواه) — به‌صورت پیش‌فرض فعال
 - *(اختیاری)* مرورگر Firefox نصب‌شده در مسیر `/Applications/Firefox.app` (در macOS) برای دستور `make firefox`
 
 ## راه‌اندازی
@@ -68,15 +72,25 @@ cp .env.example .env
 
 <div dir="rtl">
 
-۲. فایل `.env` را با اطلاعات سابسکریپشن، سرور SSH، تنظیمات محیط کار، هویت Git و مسیر پروژه‌ها ویرایش کنید:
+۲. فایل `.env` را با حالت پروکسی، سرور SSH، تنظیمات محیط کار، هویت Git و مسیر پروژه‌ها ویرایش کنید:
 
 </div>
 
 ```env
-# Subscription (Xray/V2Ray JSON, e.g. from Sanaei panel)
+# Upstream Proxy Mode: sub | uri | direct
+PROXY_MODE=sub
+
+# Subscription URL (در حالت PROXY_MODE=sub)
 SUB_URL=https://sub.example.com/json/YOUR_TOKEN
 
+# Single proxy URI (در حالت PROXY_MODE=uri) — پشتیبانی از vless://, vmess://, trojan://, ss://
+# PROXY_URI=vless://uuid@example.com:443?security=reality&sni=example.com&pbk=...&sid=...&fp=chrome#node
+
 # SSH Tunnel (final exit node)
+# ⚠️ هشدار: پروکسی SSH به‌صورت پیش‌فرض همیشه فعال است (SSH_ENABLED=true).
+# غیرفعال کردن آن (SSH_ENABLED=false) باعث خروج مستقیم شده و در صورت ترکیب با PROXY_MODE=direct
+# باعث لو رفتن IP واقعی شما می‌شود!
+# SSH_ENABLED=true
 SSH_HOST=1.2.3.4
 SSH_PORT=22
 SSH_USER=root

@@ -10,10 +10,13 @@ services:
     ports:
       - "127.0.0.1:${SOCKS_PORT:-1080}:1080"
     environment:
-      - SUB_URL=${SUB_URL}
-      - SSH_HOST=${SSH_HOST}
+      - PROXY_MODE=${PROXY_MODE:-sub}
+      - SUB_URL=${SUB_URL:-}
+      - PROXY_URI=${PROXY_URI:-}
+      - SSH_ENABLED=${SSH_ENABLED:-true}
+      - SSH_HOST=${SSH_HOST:-}
       - SSH_PORT=${SSH_PORT:-22}
-      - SSH_USER=${SSH_USER}
+      - SSH_USER=${SSH_USER:-}
       - SSH_KEY_PATH=/etc/sing-box/ssh-key
     volumes:
       - ${SSH_KEY_FILE:-~/.ssh/id_rsa}:/etc/sing-box/ssh-key:ro
