@@ -1,23 +1,28 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-FIREFOX_PROFILE := $(HOME)/ff-claude-profile
-TIMEZONE := Europe/Helsinki
-SOCKS_PORT := 1080
+-include .env
 
-.PHONY: help up build down restart firefox claude shell check logs
+FIREFOX_PROFILE := $(HOME)/ff-claude-profile
+TIMEZONE        := $(or $(TZ),Europe/Helsinki)
+SOCKS_PORT      := $(or $(SOCKS_PORT),1080)
+
+.PHONY: help sync-projects up build down restart firefox claude shell check logs
 
 help: ## Show available commands
 	@echo "Claude Workspace (sing-box → VLESS/VMess → SSH Exit)"
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
-	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-up: ## Start containers in background
+sync-projects: ## Generate docker-compose.override.yaml from PROJECTS in .env
+	@python3 scripts/sync-projects.py
+
+up: sync-projects ## Start containers in background
 	docker compose up -d
 
-build: ## Rebuild images and start containers
+build: sync-projects ## Rebuild images and start containers
 	docker compose up -d --build
 
 down: ## Stop and remove containers

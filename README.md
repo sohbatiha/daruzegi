@@ -24,7 +24,9 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 ├── docker-compose.yaml     # Unified stack: singbox gateway + claude-workspace
 ├── Makefile                # Helper commands (run `make` for help)
 ├── .env.example            # Required environment variables template
-├── .gitignore              # Ignores .env
+├── .gitignore              # Ignores .env and generated docker-compose.override.yaml
+├── scripts/
+│   └── sync-projects.py    # Generates docker-compose.override.yaml from PROJECTS in .env
 └── singbox-chain/
     ├── Dockerfile          # sing-box + Python 3.12 (Alpine)
     ├── convert.py          # Xray/V2Ray JSON → sing-box outbounds converter
@@ -46,7 +48,7 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
    cp .env.example .env
    ```
 
-2. Edit `.env` with your subscription URL and SSH exit server details:
+2. Edit `.env` with your subscription URL, SSH exit server, workspace settings, and Git identity:
    ```env
    # Subscription (Xray/V2Ray JSON, e.g. from Sanaei panel)
    SUB_URL=https://sub.example.com/json/YOUR_TOKEN
@@ -56,16 +58,30 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
    SSH_PORT=22
    SSH_USER=root
    SSH_KEY_FILE=~/.ssh/id_rsa
+
+   # Proxy
+   SOCKS_PORT=1080
+
+   # Workspace Environment
+   TZ=Europe/Helsinki
+   WORKSPACE_LANG=en_US.UTF-8
+   WORKSPACE_TERM=xterm-256color
+
+   # Git Identity
+   GIT_USER_NAME=your-name
+   GIT_USER_EMAIL=you@example.com
+
+   # Projects (comma-separated host paths → mounted to /workspace/<folder-name>)
+   # Use /path/to/dir:custom-name to override the folder name inside /workspace
+   PROJECTS=/path/to/project-a,/other/path/project-b:custom-b
    ```
 
-3. *(Optional)* Adjust mounted project folders, timezone, or Git identity in `docker-compose.yaml` under `services.claude-code`.
-
-4. Build and start the stack:
+3. Build and start the stack:
    ```bash
    make build
    ```
 
-5. Verify the tunnel, exit IP, and DNS:
+4. Verify the tunnel, exit IP, and DNS:
    ```bash
    make check
    ```
@@ -78,8 +94,9 @@ Run `make` (or `make help`) to display all available targets:
 | Command | Description |
 | :--- | :--- |
 | `make` / `make help` | Show available commands |
-| `make up` | Start containers in the background |
-| `make build` | Rebuild images and start containers |
+| `make sync-projects` | Regenerate `docker-compose.override.yaml` from `PROJECTS` in `.env` |
+| `make up` | Sync project mounts and start containers in the background |
+| `make build` | Sync project mounts, rebuild images, and start containers |
 | `make down` | Stop and remove containers |
 | `make restart` | Restart containers (re-fetches subscription on `singbox` start) |
 | `make claude` | Launch `claude` CLI inside `claude-workspace` |

@@ -8,7 +8,7 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
-      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:${SOCKS_PORT:-1080}:1080"
     environment:
       - SUB_URL=${SUB_URL}
       - SSH_HOST=${SSH_HOST}
@@ -35,21 +35,21 @@ services:
       singbox:
         condition: service_healthy
     environment:
-      - TZ=Europe/Helsinki
-      - LANG=en_US.UTF-8
-      - TERM=xterm-256color
+      - TZ=${TZ:-Europe/Helsinki}
+      - LANG=${WORKSPACE_LANG:-en_US.UTF-8}
+      - TERM=${WORKSPACE_TERM:-xterm-256color}
+      - GIT_USER_NAME=${GIT_USER_NAME:-}
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL:-}
     volumes:
-      - ./projects/project-a:/workspace/project-a
-      - ./projects/project-b:/workspace/project-b
       - claude-config:/root/.claude
     working_dir: /workspace
     command: >
-      sh -c "
-        git config --global user.name 'your-name' &&
-        git config --global user.email 'you@example.com' &&
+      sh -c '
+        [ -n "$$GIT_USER_NAME" ] && git config --global user.name "$$GIT_USER_NAME";
+        [ -n "$$GIT_USER_EMAIL" ] && git config --global user.email "$$GIT_USER_EMAIL";
         git config --global log.date local &&
         tail -f /dev/null
-      "
+      '
     stdin_open: true
     tty: true
     restart: unless-stopped
