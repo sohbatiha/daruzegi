@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import sys
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -643,6 +644,7 @@ def main() -> None:
 
     input_path = sys.argv[1]
     output_path = sys.argv[2] if len(sys.argv) > 2 else None
+    test_interval = os.environ.get("SUB_TEST_INTERVAL", "").strip() or "5m"
 
     with open(input_path, encoding="utf-8") as f:
         raw_text = f.read().strip()
@@ -668,6 +670,9 @@ def main() -> None:
                     ob for ob in parsed_json["outbounds"]
                     if ob.get("type") not in ("direct", "block", "dns")
                 ]
+                for ob in outbounds:
+                    if ob.get("type") == "urltest":
+                        ob["interval"] = test_interval
                 write_output(outbounds, output_path)
                 return
 
@@ -697,10 +702,13 @@ def main() -> None:
             "tag": "auto",
             "outbounds": [ob["tag"] for ob in outbounds],
             "url": "https://www.gstatic.com/generate_204",
-            "interval": "5m",
+            "interval": test_interval,
         }
         outbounds.insert(0, selector)
-        print(f"➕ Added 'auto' urltest selector over {len(outbounds) - 1} servers", file=sys.stderr)
+        print(
+            f"➕ Added 'auto' urltest selector over {len(outbounds) - 1} servers (interval: {test_interval})",
+            file=sys.stderr,
+        )
 
     write_output(outbounds, output_path)
 

@@ -25,6 +25,8 @@ esac
 
 SSH_PORT="${SSH_PORT:-22}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-/etc/sing-box/ssh-key}"
+SUB_TEST_INTERVAL="${SUB_TEST_INTERVAL:-5m}"
+export SUB_TEST_INTERVAL
 
 # ─── Validate required env ──────────────────────────────────
 if [ "$PROXY_MODE" = "sub" ] && [ -z "${SUB_URL:-}" ]; then
@@ -173,6 +175,9 @@ echo ""
 echo "═══════════════════════════════════════════"
 echo "  ✅ Config built successfully"
 echo "  ⚙️  Mode:       $PROXY_MODE"
+if [ "$PROXY_MODE" = "sub" ]; then
+  echo "  ⏱️  Test every: $SUB_TEST_INTERVAL"
+fi
 if [ "$SSH_ENABLED" = "true" ]; then
   echo "  🔑 SSH exit:   $SSH_USER@$SSH_HOST:$SSH_PORT"
 else

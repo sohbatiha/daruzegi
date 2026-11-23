@@ -13,6 +13,7 @@ services:
     environment:
       - PROXY_MODE=${PROXY_MODE:-sub}
       - SUB_URL=${SUB_URL:-}
+      - SUB_TEST_INTERVAL=${SUB_TEST_INTERVAL:-5m}
       - PROXY_URI=${PROXY_URI:-}
       - SSH_ENABLED=${SSH_ENABLED:-true}
       - SSH_HOST=${SSH_HOST:-}

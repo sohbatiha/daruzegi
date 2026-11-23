@@ -99,6 +99,8 @@ PROXY_MODE=sub
 
 # Subscription URL (در حالت PROXY_MODE=sub)
 SUB_URL=https://sub.example.com/json/YOUR_TOKEN
+# بازه زمانی تست سرعت سرورهای سابسکریپشن (مثلاً 30s، 5m، 1h)
+SUB_TEST_INTERVAL=5m
 
 # Single proxy URI (در حالت PROXY_MODE=uri) — پشتیبانی از vless://, vmess://, trojan://, ss://
 # PROXY_URI=vless://uuid@example.com:443?security=reality&sni=example.com&pbk=...&sid=...&fp=chrome#node

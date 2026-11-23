@@ -80,6 +80,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 
    # Subscription URL (when PROXY_MODE=sub)
    SUB_URL=https://sub.example.com/json/YOUR_TOKEN
+   # URL-test interval for subscription nodes (e.g. 30s, 5m, 1h)
+   SUB_TEST_INTERVAL=5m
 
    # Single proxy URI (when PROXY_MODE=uri) — supports vless://, vmess://, trojan://, ss://
    # PROXY_URI=vless://uuid@example.com:443?security=reality&sni=example.com&pbk=...&sid=...&fp=chrome#node
