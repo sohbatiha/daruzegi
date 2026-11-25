@@ -16,7 +16,30 @@ mkdir -p \
   "$HOME/.local/bin" \
   "$HOME/.local/share" \
   "$HOME/.cache" \
-  "$HOME/.npm-global/bin"
+  "$HOME/.npm-global/bin" \
+  "$HOME/.playwright-profile"
+
+# Clear stale Chromium profile locks left by an ungraceful container stop
+rm -f \
+  "$HOME/.playwright-profile/SingletonLock" \
+  "$HOME/.playwright-profile/SingletonSocket" \
+  "$HOME/.playwright-profile/SingletonCookie"
+
+# Start virtual X11 display + lightweight WM + noVNC so headed Chromium is viewable on 127.0.0.1:<BROWSER_PORT>
+DISPLAY_NUM="${DISPLAY#:}"
+DISPLAY_NUM="${DISPLAY_NUM:-99}"
+if ! pgrep -x Xvfb >/dev/null 2>&1; then
+  rm -f "/tmp/.X${DISPLAY_NUM}-lock" "/tmp/.X11-unix/X${DISPLAY_NUM}"
+  Xvfb ":${DISPLAY_NUM}" -screen 0 1280x800x24 -ac +extension GLX +render -noreset >/tmp/xvfb.log 2>&1 &
+  i=0
+  while [ ! -S "/tmp/.X11-unix/X${DISPLAY_NUM}" ] && [ "$i" -lt 50 ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  openbox >/tmp/openbox.log 2>&1 &
+  x11vnc -display ":${DISPLAY_NUM}" -rfbport 5900 -listen 127.0.0.1 -forever -shared -nopw -noxdamage -quiet >/tmp/x11vnc.log 2>&1 &
+  websockify --web=/usr/share/novnc "0.0.0.0:${BROWSER_PORT:-6080}" 127.0.0.1:5900 >/tmp/novnc.log 2>&1 &
+fi
 
 # Git identity for commits made by agents (optional, from .env)
 [ -n "$GIT_USER_NAME" ]  && git config --global user.name  "$GIT_USER_NAME"
@@ -34,6 +57,20 @@ if [ -n "$OPENAI_API_KEY" ] && [ ! -f "${CODEX_HOME:-$HOME/.codex}/auth.json" ];
   printenv OPENAI_API_KEY | codex login --with-api-key >/dev/null 2>&1 \
     && echo "[entrypoint] codex logged in with OPENAI_API_KEY" \
     || echo "[entrypoint] WARN: codex API-key login failed"
+fi
+
+# Claude Code: register Playwright MCP in user scope once (persisted in $CLAUDE_CONFIG_DIR/.claude.json)
+CLAUDE_JSON="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.claude.json"
+if ! jq -e '.mcpServers.playwright' "$CLAUDE_JSON" >/dev/null 2>&1; then
+  claude mcp add -s user playwright -e "DISPLAY=${DISPLAY:-:99}" -- \
+    playwright-mcp \
+    --browser chromium \
+    --no-sandbox \
+    --viewport-size 1280x760 \
+    --output-dir /tmp/playwright-mcp \
+    --user-data-dir "$HOME/.playwright-profile" >/dev/null 2>&1 \
+    && echo "[entrypoint] registered playwright MCP (user scope)" \
+    || echo "[entrypoint] WARN: failed to register playwright MCP"
 fi
 
 exec "$@"

@@ -8,8 +8,9 @@ FIREFOX_PROFILE := $(HOME)/ff-claude-profile
 TIMEZONE        := $(or $(TZ),Europe/Helsinki)
 SOCKS_PORT      := $(or $(SOCKS_PORT),1080)
 T3_PORT         := $(or $(T3_PORT),3773)
+BROWSER_PORT    := $(or $(BROWSER_PORT),6080)
 
-.PHONY: help setup sync-projects up build down restart ps firefox pair claude claude-login codex-login shell check logs logs-singbox logs-t3 fix-perms
+.PHONY: help setup sync-projects up build down restart ps browser firefox pair claude claude-login codex-login shell check logs logs-singbox logs-t3 fix-perms
 
 help: ## Show available commands
 	@echo "T3 Code Workspace (sing-box → VLESS/VMess → SSH Exit)"
@@ -54,6 +55,20 @@ codex-login: ## Log in to Codex with ChatGPT
 shell: ## Open interactive bash shell inside t3code
 	$(COMPOSE) exec -it t3code bash
 
+browser: ## Open live container browser (noVNC); optional: make browser URL=https://...
+	@if [ -n "$(URL)" ]; then \
+		if $(COMPOSE) exec -T t3code pgrep -f 'playwright-profile' >/dev/null 2>&1; then \
+			echo "Chromium is already running inside t3code (opening live view)..."; \
+		else \
+			$(COMPOSE) exec -d -e TARGET_URL="$(URL)" t3code sh -c '\
+				CHROME="$$(node -e "const p=require(require.resolve(\"playwright-core\",{paths:[\"/usr/local/lib/node_modules/@playwright/mcp\"]}));console.log(p.chromium.executablePath())")"; \
+				exec "$$CHROME" --no-sandbox --user-data-dir="$$HOME/.playwright-profile" --window-size=1280,760 --no-first-run "$$TARGET_URL" >/tmp/chromium-manual.log 2>&1'; \
+			echo "Launched Chromium in t3code for $(URL) — close the browser window when done logging in."; \
+		fi; \
+	fi
+	@open "http://127.0.0.1:$(BROWSER_PORT)/vnc.html?autoconnect=true&resize=scale"
+	@echo "Live browser viewer: http://127.0.0.1:$(BROWSER_PORT)/vnc.html?autoconnect=true&resize=scale"
+
 firefox: ## Launch hardened Firefox using SOCKS5 proxy (127.0.0.1:1080)
 	@mkdir -p $(FIREFOX_PROFILE)
 	@printf 'user_pref("network.proxy.type", 1);\n\
@@ -87,6 +102,9 @@ check: ## Verify SOCKS5 IP, container IP, TUN routing, DNS, and T3 port
 	@echo ""
 	@echo "--- T3 Code Local Endpoint (http://127.0.0.1:$(T3_PORT)) ---"
 	@curl -sS -o /dev/null -w "HTTP %{http_code}\n" --max-time 5 http://127.0.0.1:$(T3_PORT) || echo "Failed"
+	@echo ""
+	@echo "--- Browser Live View (http://127.0.0.1:$(BROWSER_PORT)) ---"
+	@curl -sS -o /dev/null -w "HTTP %{http_code}\n" --max-time 5 http://127.0.0.1:$(BROWSER_PORT)/vnc.html || echo "Failed"
 
 logs: ## Follow logs for all containers
 	$(COMPOSE) logs -f --tail=200

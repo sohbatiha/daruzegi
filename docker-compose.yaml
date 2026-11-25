@@ -10,6 +10,7 @@ services:
     ports:
       - "127.0.0.1:${SOCKS_PORT:-1080}:1080"
       - "127.0.0.1:${T3_PORT:-3773}:3773"
+      - "127.0.0.1:${BROWSER_PORT:-6080}:6080"
     environment:
       - PROXY_MODE=${PROXY_MODE:-sub}
       - SUB_URL=${SUB_URL:-}
@@ -38,6 +39,7 @@ services:
     container_name: t3code
     restart: unless-stopped
     init: true
+    shm_size: 1gb
     network_mode: "service:singbox"
     depends_on:
       singbox:
@@ -63,6 +65,9 @@ services:
       - GIT_USER_NAME=${GIT_USER_NAME:-}
       - GIT_USER_EMAIL=${GIT_USER_EMAIL:-}
       - T3_PORT=${T3_PORT:-3773}
+      - BROWSER_PORT=${BROWSER_PORT:-6080}
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
       - T3_PUBLIC_URL=${T3_PUBLIC_URL:-}
       - T3_PAIRING_TTL=${T3_PAIRING_TTL:-1h}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
