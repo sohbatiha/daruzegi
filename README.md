@@ -13,7 +13,7 @@
   🌐 <strong>Language:</strong> <strong>English</strong> | <a href="README.fa.md">فارسی</a>
 </p>
 
-An isolated Docker workspace for running **T3 Code** (with **Claude Code** and **OpenAI Codex**) and a hardened **Firefox** browser where all outbound network traffic and DNS queries are forced through a chained tunnel:
+An isolated Docker workspace for running **T3 Code** (with **Claude Code**, **OpenAI Codex**, and **Google Antigravity CLI**) and a hardened **Firefox** browser where all outbound network traffic and DNS queries are forced through a chained tunnel:
 
 ```text
 T3 Code (container :3773)    ──► TUN (tun0, strict_route) ──┐
@@ -23,7 +23,7 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 
 ## Features
 
-- **T3 Code Web UI + Coding Agents**: Runs `t3 serve` (bound locally to `127.0.0.1:3773`) with both `@anthropic-ai/claude-code` and `@openai/codex` preinstalled, plus `t3-pair` / `make pair` for generating login pairing links.
+- **T3 Code Web UI + Coding Agents**: Runs `t3 serve` (bound locally to `127.0.0.1:3773`) with `@anthropic-ai/claude-code`, `@openai/codex`, and **Antigravity CLI (`agy`)** preinstalled (with Playwright MCP auto-registered for Claude Code and Antigravity), plus `t3-pair` / `make pair` for generating login pairing links.
 - **Flexible Proxy Modes (`sub`, `uri`, `direct`)**:
   - `sub` *(default)*: Fetches an Xray/V2Ray subscription (Sanaei JSON arrays, standard JSON, sing-box JSON, or base64/plain URI lists), converts outbounds to `sing-box` 1.14+ format, selects the fastest node via `urltest` (`auto`), and tunnels an SSH exit connection through it.
   - `uri`: Connects via a single share link (`vless://`, `vmess://`, `trojan://`, or `ss://`) defined in `PROXY_URI`, then tunnels through SSH.
@@ -31,15 +31,15 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 - **Transparent TUN Routing & Kill Switch**: The `t3code` container shares `singbox`'s network namespace (`network_mode: "service:singbox"`) and waits until `singbox` passes its healthcheck (`tun0` up + port `1080` listening). All container traffic is routed through `tun0` with `strict_route: true` — even tools ignoring proxy environment variables cannot bypass the tunnel.
 - **No DNS Leaks**: Container DNS is pointed to `1.1.1.1` so queries enter `tun0`, get intercepted via `hijack-dns`, and resolve over DoH (`https://1.1.1.1/dns-query`) through `ssh-exit`. Proxy server hostnames resolve separately via Docker's local resolver (`default_domain_resolver`) to avoid bootstrap loops.
 - **Host SOCKS5/HTTP Proxy + Hardened Firefox**: Exposes a `mixed` inbound on `127.0.0.1:1080` for macOS host apps and includes `make firefox` to launch an isolated Firefox profile with remote SOCKS5 DNS, WebRTC disabled, geolocation disabled, `resistFingerprinting`, and matching timezone (`Europe/Helsinki`).
-- **Single Unified Persistent Data Folder (`DATA_DIR`)**: Mounts the entire container home directory (`/home/node`) to a single host folder (`DATA_DIR`, default `./data`), so all Claude CLI, Codex, and T3 Code files — including skills (`.claude/skills`, `.codex/skills`, `.agents/skills`), plugins, MCP configs, auth sessions, `.config`, `.local/bin`, `.npm-global`, `.ssh`, and shell history — survive `docker-compose` edits, rebuilds, restarts, and `docker compose down -v`.
+- **Single Unified Persistent Data Folder (`DATA_DIR`)**: Mounts the entire container home directory (`/home/node`) to a single host folder (`DATA_DIR`, default `./data`), so all Claude CLI, Codex, Antigravity CLI, and T3 Code files — including skills (`.claude/skills`, `.codex/skills`, `.gemini/config/skills`, `.agents/skills`), plugins, MCP configs, auth sessions, `.config`, `.local/bin`, `.npm-global`, `.ssh`, and shell history — survive `docker-compose` edits, rebuilds, restarts, and `docker compose down -v`.
 - **Dynamic Project Mounts via `.env`**: List one or more host project folders in `PROJECTS` to mount them automatically under `/workspace/<folder-name>`.
 
 ## Project Structure
 
 ```text
 .
-├── Dockerfile              # Node 22 + t3 + @anthropic-ai/claude-code + @openai/codex
-├── entrypoint.sh           # Git identity, safe.directory, and optional Codex API-key login
+├── Dockerfile              # Node 22 + t3 + claude-code + codex + antigravity CLI (agy) + Playwright MCP
+├── entrypoint.sh           # Xvfb/noVNC, Git identity, MCP registration, and optional API-key setup
 ├── t3-pair                 # Helper installed in container to issue T3 pairing links
 ├── pair.sh                 # Host shortcut for issuing T3 pairing links
 ├── docker-compose.yaml     # Unified stack: singbox gateway + t3code container
@@ -106,6 +106,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
    # Coding Agents (optional — leave empty to log in interactively)
    CLAUDE_CODE_OAUTH_TOKEN=
    OPENAI_API_KEY=
+   GEMINI_API_KEY=
+   # GOOGLE_GEMINI_BASE_URL=
 
    # Workspace Environment
    TZ=Europe/Helsinki
@@ -137,6 +139,7 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
    make pair          # prints http://localhost:3773/... pairing link (make pair TTL=30d)
    make claude-login  # run /login inside Claude Code
    make codex-login   # log in to Codex with ChatGPT
+   make agy-login     # log in to Antigravity CLI (manual URL/code OAuth flow)
    ```
 
 ## Commands
@@ -156,6 +159,7 @@ Run `make` (or `make help`) to display all available targets:
 | `make pair` | Issue a T3 Code login link (`make pair TTL=30d`) |
 | `make claude` / `make claude-login` | Launch `claude` CLI inside `t3code` |
 | `make codex-login` | Log in to Codex with ChatGPT (`--device-auth`) |
+| `make agy` / `make agy-login` | Launch Antigravity CLI (`agy`) / Google OAuth login inside `t3code` |
 | `make shell` | Open an interactive `bash` shell inside `t3code` |
 | `make firefox` | Launch hardened Firefox routed through `127.0.0.1:1080` |
 | `make check` | Verify SOCKS5 IP, container IP, transparent TUN, DNS, and T3 local port |

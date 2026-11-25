@@ -15,7 +15,7 @@
   🌐 <strong>زبان:</strong> <a href="README.md">English</a> | <strong>فارسی</strong>
 </p>
 
-یک محیط Docker ایزوله برای اجرای **T3 Code** (همراه با **Claude Code** و **OpenAI Codex**) و مرورگر امن‌شده‌ی **Firefox** که در آن تمام ترافیک شبکه خروجی و درخواست‌های DNS به‌صورت اجباری از طریق یک تونل زنجیره‌ای عبور می‌کنند:
+یک محیط Docker ایزوله برای اجرای **T3 Code** (همراه با **Claude Code**، **OpenAI Codex** و **Google Antigravity CLI**) و مرورگر امن‌شده‌ی **Firefox** که در آن تمام ترافیک شبکه خروجی و درخواست‌های DNS به‌صورت اجباری از طریق یک تونل زنجیره‌ای عبور می‌کنند:
 
 </div>
 
@@ -29,7 +29,7 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 
 ## ویژگی‌ها
 
-- **رابط وب T3 Code + ایجنت‌های کدنویسی:** سرویس `t3 serve` را به‌صورت لوکال روی `127.0.0.1:3773` اجرا می‌کند و هر دو ابزار `@anthropic-ai/claude-code` و `@openai/codex` به‌صورت پیش‌فرض داخل آن نصب هستند؛ همچنین دستور `make pair` (یا `./pair.sh`) لینک ورود (pairing) تولید می‌کند.
+- **رابط وب T3 Code + ایجنت‌های کدنویسی:** سرویس `t3 serve` را به‌صورت لوکال روی `127.0.0.1:3773` اجرا می‌کند و ابزارهای `@anthropic-ai/claude-code`، `@openai/codex` و **Antigravity CLI (`agy`)** به‌صورت پیش‌فرض داخل آن نصب هستند (همراه با ثبت خودکار Playwright MCP برای Claude Code و Antigravity)؛ همچنین دستور `make pair` (یا `./pair.sh`) لینک ورود (pairing) تولید می‌کند.
 - **حالت‌های انعطاف‌پذیر پروکسی (`sub`، `uri` و `direct`):**
   - `sub` *(پیش‌فرض)*: لینک سابسکریپشن Xray/V2Ray (خروجی JSON پنل سنایی، JSON استاندارد، sing-box JSON یا لیست URI به‌صورت متن ساده/Base64) را دریافت کرده، به فرمت `sing-box` نسخه 1.14 به بالا تبدیل می‌کند، سریع‌ترین سرور را با `urltest` (`auto`) انتخاب کرده و ترافیک خروجی را از طریق تونل SSH به سرور نهایی هدایت می‌کند.
   - `uri`: اتصال تکی از طریق یک لینک کانفیگ (`vless://`، `vmess://`، `trojan://` یا `ss://`) در متغیر `PROXY_URI` و عبور آن از تونل SSH.
@@ -38,7 +38,7 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 - **مسیریابی شفاف TUN و Kill Switch:** کانتینر `t3code` فضای شبکه `singbox` را به اشتراک می‌گذارد (`network_mode: "service:singbox"`) و تا آماده شدن کامل `singbox` (بالا آمدن `tun0` و باز شدن پورت `1080`) صبر می‌کند. تمام ترافیک خروجی کانتینر با `strict_route: true` از `tun0` عبور می‌کند.
 - **بدون نشت DNS (No DNS Leaks):** تنظیم DNS کانتینر روی `1.1.1.1` قرار می‌گیرد تا تمام درخواست‌ها وارد `tun0` شده، توسط `hijack-dns` رهگیری شوند و از طریق DoH (`https://1.1.1.1/dns-query`) روی `ssh-exit` حل شوند.
 - **پروکسی SOCKS5/HTTP روی سیستم میزبان + فایرفاکس امن‌شده:** یک ورودی `mixed` روی `127.0.0.1:1080` برای برنامه‌های سیستم میزبان (macOS) باز می‌کند و دستور `make firefox` یک پروفایل ایزوله از Firefox با DNS از راه دور روی SOCKS5 و تایم‌زون هماهنگ با `.env` اجرا می‌کند.
-- **ذخیره‌سازی یکپارچه تمام دیتاها در یک پوشه واحد (`DATA_DIR`):** کل دایرکتوری خانه کانتینر (`/home/node`) به یک پوشه واحد روی سیستم میزبان (`DATA_DIR` با پیش‌فرض `./data`) مانت می‌شود؛ بنابراین تمام فایل‌ها، اسکیل‌ها (`.claude/skills`، `.codex/skills`، `.agents/skills`)، پلاگین‌ها، تنظیمات MCP، نشست‌های لاگین، `.config`، `.local/bin`، `.npm-global`، `.ssh` و وضعیت `t3` با تغییر `docker-compose.yaml`، ریستارت، بیلد مجدد یا حتی `docker compose down -v` از بین نمی‌روند.
+- **ذخیره‌سازی یکپارچه تمام دیتاها در یک پوشه واحد (`DATA_DIR`):** کل دایرکتوری خانه کانتینر (`/home/node`) به یک پوشه واحد روی سیستم میزبان (`DATA_DIR` با پیش‌فرض `./data`) مانت می‌شود؛ بنابراین تمام فایل‌ها، اسکیل‌ها (`.claude/skills`، `.codex/skills`، `.gemini/config/skills`، `.agents/skills`)، پلاگین‌ها، تنظیمات MCP، نشست‌های لاگین، `.config`، `.local/bin`، `.npm-global`، `.ssh` و وضعیت `t3` با تغییر `docker-compose.yaml`، ریستارت، بیلد مجدد یا حتی `docker compose down -v` از بین نمی‌روند.
 - **اتصال داینامیک پروژه‌ها از طریق `.env`:** مسیر پروژه‌های خود را در متغیر `PROJECTS` داخل `.env` مشخص کنید تا خودکار در `/workspace/<نام-پوشه>` مانت شوند.
 
 ## ساختار پروژه
@@ -47,8 +47,8 @@ Hardened Firefox (host)      ──► SOCKS5 (127.0.0.1:1080)  ──┘
 
 ```text
 .
-├── Dockerfile              # Node 22 + t3 + @anthropic-ai/claude-code + @openai/codex
-├── entrypoint.sh           # تنظیم Git، safe.directory و لاگین اختیاری Codex با API key
+├── Dockerfile              # Node 22 + t3 + claude-code + codex + antigravity CLI (agy) + Playwright MCP
+├── entrypoint.sh           # Xvfb/noVNC، تنظیم Git، ثبت MCP و لاگین اختیاری با API key
 ├── t3-pair                 # اسکریپت داخل کانتینر برای ساخت لینک pairing
 ├── pair.sh                 # میان‌بر روی میزبان برای ساخت لینک pairing
 ├── docker-compose.yaml     # استک یکپارچه: دروازه singbox + کانتینر t3code
@@ -123,6 +123,8 @@ T3_PAIRING_TTL=1h
 # Coding Agents (اختیاری — برای لاگین تعاملی خالی بگذارید)
 CLAUDE_CODE_OAUTH_TOKEN=
 OPENAI_API_KEY=
+GEMINI_API_KEY=
+# GOOGLE_GEMINI_BASE_URL=
 
 # Workspace Environment
 TZ=Europe/Helsinki
@@ -159,7 +161,7 @@ make check
 
 <div dir="rtl">
 
-۵. لینک ورود T3 Code را بگیرید و در صورت نیاز وارد Claude Code یا Codex شوید:
+۵. لینک ورود T3 Code را بگیرید و در صورت نیاز وارد Claude Code، Codex یا Antigravity CLI شوید:
 
 </div>
 
@@ -167,6 +169,7 @@ make check
 make pair          # ساخت لینک ورود روی http://localhost:3773 (مثلاً make pair TTL=30d)
 make claude-login  # داخل محیط دستور /login را اجرا کنید
 make codex-login   # لاگین Codex با حساب ChatGPT
+make agy-login     # لاگین Antigravity CLI با حساب گوگل (لینک و کد احراز هویت)
 ```
 
 <div dir="rtl">
@@ -188,6 +191,7 @@ make codex-login   # لاگین Codex با حساب ChatGPT
 | `make pair` | ساخت لینک ورود T3 Code (مثلاً `make pair TTL=30d`) |
 | `make claude` / `make claude-login` | اجرای CLI کلود کد (`claude`) داخل کانتینر `t3code` |
 | `make codex-login` | لاگین به Codex با حساب ChatGPT |
+| `make agy` / `make agy-login` | اجرای Antigravity CLI (`agy`) و لاگین OAuth گوگل داخل کانتینر `t3code` |
 | `make shell` | باز کردن شل تعاملی `bash` داخل کانتینر `t3code` |
 | `make firefox` | اجرای Firefox امن‌شده روی پروکسی `127.0.0.1:1080` |
 | `make check` | بررسی IP پروکسی میزبان، IP کانتینر، تونل شفاف TUN، DNS و پورت لوکال T3 |

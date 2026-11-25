@@ -15,6 +15,10 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN npm install -g t3 @anthropic-ai/claude-code @openai/codex @playwright/mcp \
     && npm cache clean --force
 
+# Antigravity CLI (agy) — installed in /usr/local/bin so it persists outside the /home/node volume
+RUN curl -fsSL https://antigravity.google/cli/install.sh | bash -s -- --dir /usr/local/bin \
+    && rm -rf /root/.cache/antigravity
+
 RUN /usr/local/lib/node_modules/@playwright/mcp/node_modules/.bin/playwright-core install --with-deps chromium \
     && chmod -R a+rX /ms-playwright \
     && rm -rf /var/lib/apt/lists/*
@@ -22,7 +26,7 @@ RUN /usr/local/lib/node_modules/@playwright/mcp/node_modules/.bin/playwright-cor
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY t3-pair /usr/local/bin/t3-pair
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/t3-pair \
-    && mkdir -p /tmp/.X11-unix /workspace /home/node/.claude /home/node/.codex /home/node/.t3 /home/node/.agents /home/node/.local/bin /home/node/.npm-global/bin /home/node/.playwright-profile \
+    && mkdir -p /tmp/.X11-unix /workspace /home/node/.claude /home/node/.codex /home/node/.gemini/config /home/node/.gemini/antigravity-cli /home/node/.t3 /home/node/.agents /home/node/.local/bin /home/node/.npm-global/bin /home/node/.playwright-profile \
     && chmod 1777 /tmp/.X11-unix \
     && chown -R node:node /workspace /home/node
 

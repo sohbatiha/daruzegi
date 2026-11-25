@@ -10,7 +10,7 @@ SOCKS_PORT      := $(or $(SOCKS_PORT),1080)
 T3_PORT         := $(or $(T3_PORT),3773)
 BROWSER_PORT    := $(or $(BROWSER_PORT),6080)
 
-.PHONY: help setup sync-projects up build down restart ps browser firefox pair claude claude-login codex-login shell check logs logs-singbox logs-t3 fix-perms
+.PHONY: help setup sync-projects up build down restart ps browser firefox pair claude claude-login codex-login agy agy-login shell check logs logs-singbox logs-t3 fix-perms
 
 help: ## Show available commands
 	@echo "T3 Code Workspace (sing-box → VLESS/VMess → SSH Exit)"
@@ -52,6 +52,12 @@ claude-login: ## Log in to Claude Code (run /login inside)
 codex-login: ## Log in to Codex with ChatGPT
 	$(COMPOSE) exec -it t3code codex login --device-auth
 
+agy: ## Run Antigravity CLI (agy) inside t3code container
+	$(COMPOSE) exec -it -e SSH_CONNECTION="127.0.0.1 0 127.0.0.1 22" t3code agy
+
+agy-login: ## Log in to Antigravity CLI with Google OAuth (manual URL/code flow)
+	$(COMPOSE) exec -it -e SSH_CONNECTION="127.0.0.1 0 127.0.0.1 22" t3code agy
+
 shell: ## Open interactive bash shell inside t3code
 	$(COMPOSE) exec -it t3code bash
 
@@ -62,7 +68,7 @@ browser: ## Open live container browser (noVNC); optional: make browser URL=http
 		else \
 			$(COMPOSE) exec -d -e TARGET_URL="$(URL)" t3code sh -c '\
 				CHROME="$$(node -e "const p=require(require.resolve(\"playwright-core\",{paths:[\"/usr/local/lib/node_modules/@playwright/mcp\"]}));console.log(p.chromium.executablePath())")"; \
-				exec "$$CHROME" --no-sandbox --user-data-dir="$$HOME/.playwright-profile" --window-size=1280,760 --no-first-run "$$TARGET_URL" >/tmp/chromium-manual.log 2>&1'; \
+				exec "$$CHROME" --no-sandbox --ignore-certificate-errors --user-data-dir="$$HOME/.playwright-profile" --window-size=1280,760 --no-first-run "$$TARGET_URL" >/tmp/chromium-manual.log 2>&1'; \
 			echo "Launched Chromium in t3code for $(URL) — close the browser window when done logging in."; \
 		fi; \
 	fi
