@@ -105,6 +105,7 @@ export PROXY_MODE SSH_ENABLED SSH_HOST SSH_PORT SSH_USER SSH_KEY_PATH OUTBOUNDS_
 CHAIN_DESC=$(python3 - <<'PY'
 import json
 import os
+import socket
 
 proxy_mode = os.environ["PROXY_MODE"]
 ssh_enabled = os.environ["SSH_ENABLED"] == "true"
@@ -147,6 +148,28 @@ else:
 outbounds.append({"type": "direct", "tag": "direct"})
 config["outbounds"] = outbounds
 config["route"]["final"] = final_outbound
+
+# Allow reaching services port-forwarded on the Docker host (host.docker.internal)
+# without routing them through the remote proxy/SSH exit.
+host_domains = ["host.docker.internal", "gateway.docker.internal"]
+host_cidrs = []
+for domain in host_domains:
+    try:
+        for res in socket.getaddrinfo(domain, None):
+            ip = res[4][0]
+            cidr = f"{ip}/128" if ":" in ip else f"{ip}/32"
+            if cidr not in host_cidrs:
+                host_cidrs.append(cidr)
+    except OSError:
+        pass
+
+dns_rules = config.setdefault("dns", {}).setdefault("rules", [])
+dns_rules.insert(0, {"domain": host_domains, "server": "local-dns"})
+
+route_rules = config.setdefault("route", {}).setdefault("rules", [])
+route_rules.append({"domain": host_domains, "outbound": "direct"})
+if host_cidrs:
+    route_rules.append({"ip_cidr": host_cidrs, "outbound": "direct"})
 
 for srv in config.get("dns", {}).get("servers", []):
     if srv.get("tag") == "remote-dns":
